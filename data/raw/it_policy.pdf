@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1944 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 792 Td
+(Campus IT Usage Policy) Tj T*
+() Tj T*
+(1. Network Access) Tj T*
+() Tj T*
+(Students may register up to 3 devices on the campus WiFi network.) Tj T*
+(Each device must be registered with a valid student ID number.) Tj T*
+(Unregistered devices will be blocked automatically after 15 minutes.) Tj T*
+(Guest accounts are valid for 24 hours and must be sponsored by a current staff member.) Tj T*
+() Tj T*
+(2. Remote Access) Tj T*
+() Tj T*
+(A VPN connection is required to access library databases and internal file servers) Tj T*
+(from off campus.) Tj T*
+(The VPN client is available from the IT Services website.) Tj T*
+(Do not share VPN credentials with anyone, on or off campus.) Tj T*
+(VPN sessions are logged and inactive sessions are terminated after 8 hours.) Tj T*
+() Tj T*
+(3. Passwords) Tj T*
+() Tj T*
+(Passwords must be at least 12 characters and must be changed every 180 days.) Tj T*
+(Reusing any of the previous 5 passwords is not permitted.) Tj T*
+(Multi-factor authentication is required for administrative systems.) Tj T*
+() Tj T*
+(4. Acceptable Use) Tj T*
+() Tj T*
+(Campus network resources are provided for teaching, learning and research.) Tj T*
+(Peer-to-peer file sharing is prohibited on the campus network.) Tj T*
+(Running cryptocurrency mining software is strictly forbidden and will result in) Tj T*
+(immediate disconnection.) Tj T*
+() Tj T*
+(5. Data and Storage) Tj T*
+() Tj T*
+(Each student is allocated 50 GB of cloud storage.) Tj T*
+(Data stored on university systems may be subject to disclosure under public) Tj T*
+(records requests.) Tj T*
+(Students should not store sensitive personal data on shared drives.) Tj T*
+() Tj T*
+(6. Support) Tj T*
+() Tj T*
+(The IT Helpdesk is located on level 2 of the student centre.) Tj T*
+(It is open from 09:00 to 17:00 on weekdays and is closed on public holidays.) Tj T*
+(Urgent security incidents should be reported to security at any time.) Tj T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2307
+%%EOF

@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+.venv/
+venv/
+env/
+
+# 索引是派生数据,用 scripts/ingest.py 重新生成即可
+data/index/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

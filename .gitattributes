@@ -1,0 +1,6 @@
+# 统一按 LF 存储,避免 Windows 与 Linux 之间来回换行符抖动。
+# 仓库里大量中文文本,换行符不一致会让 diff 噪声盖过真实改动。
+* text=auto eol=lf
+
+# PDF 是二进制,不能被当作文本处理
+*.pdf binary

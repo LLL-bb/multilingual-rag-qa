@@ -1,0 +1,20 @@
+{"query": "本科生一次最多能借几本书?", "gold": ["图书馆借阅规则"], "lang": "zh", "note": "同语种:中文问题、中文文档"}
+{"query": "宿舍几点熄灯?", "gold": ["宿舍管理条例"], "lang": "zh", "note": "同语种:答案在中文文档的作息条款里"}
+{"query": "国家奖学金的金额和评定条件是什么?", "gold": ["奖学金评定办法"], "lang": "zh", "note": "同语种:docx 解析链路"}
+{"query": "在校园里可以带宠物吗?", "gold": ["校园规章"], "lang": "zh", "note": "同语种"}
+{"query": "图书馆的图书可以续借几次?", "gold": ["图书馆借阅规则"], "lang": "zh", "note": "同语种:与 library_policy 同主题但不同规则,考精度"}
+{"query": "毕业生离校前需要办什么手续?", "gold": ["图书馆借阅规则"], "lang": "zh", "note": "同语种:答案在文档末段,考分块是否切丢了尾部"}
+{"query": "How many credits are required to graduate with a bachelor's degree?", "gold": ["course_handbook"], "lang": "en", "note": "同语种:英文问题、英文文档"}
+{"query": "What time does the library close on weekends?", "gold": ["library_policy"], "lang": "en", "note": "同语种:与中文借阅规则同主题,考精度"}
+{"query": "Is a VPN required for off-campus access?", "gold": ["it_policy"], "lang": "en", "note": "同语种:pdf 解析链路"}
+{"query": "What happens if I miss more than three lab sessions?", "gold": ["course_handbook"], "lang": "en", "note": "同语种:答案在考勤条款,非最显眼段落"}
+{"query": "How much cloud storage does each student get?", "gold": ["it_policy"], "lang": "en", "note": "同语种:答案是一个具体数字"}
+{"query": "Can alumni enter the library on weekends?", "gold": ["library_policy"], "lang": "en", "note": "同语种:需要结合开放时间与会员资格两节"}
+{"query": "学校食堂一份套餐多少钱?", "gold": ["dining_menu"], "lang": "zh", "note": "跨语言:中文提问、答案只在英文菜单里"}
+{"query": "校园网最多可以注册几台设备?", "gold": ["it_policy"], "lang": "zh", "note": "跨语言:中文提问、答案在英文 pdf 里"}
+{"query": "食堂能用现金付款吗?", "gold": ["dining_menu"], "lang": "zh", "note": "跨语言:中文提问、答案在英文菜单里"}
+{"query": "图书馆周末几点开门?", "gold": ["library_policy"], "lang": "zh", "note": "跨语言:中文提问、答案在英文政策里,且中文借阅规则是干扰项"}
+{"query": "What is the penalty for using a rice cooker in the dormitory?", "gold": ["宿舍管理条例"], "lang": "en", "note": "跨语言:英文提问、答案只在中文条例里"}
+{"query": "How do I apply for a national scholarship and what is the deadline?", "gold": ["奖学金评定办法"], "lang": "en", "note": "跨语言:英文提问、答案在中文 docx 里"}
+{"query": "Are pets allowed on campus?", "gold": ["校园规章"], "lang": "en", "note": "跨语言:英文提问、答案在中文规章里"}
+{"query": "What is the fine for returning a book late?", "gold": ["图书馆借阅规则"], "lang": "en", "note": "跨语言:英文提问、答案在中文借阅规则里"}
