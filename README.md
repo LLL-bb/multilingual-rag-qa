@@ -1,121 +1,143 @@
-# 中英混合文档 RAG 问答系统
+[English](README.md) | [中文](README.zh-CN.md)
 
-支持 PDF / DOCX / TXT / MD 解析、**语言感知嵌入**、FAISS 双索引检索与跨语言 RRF 融合的
-检索增强问答系统。内置一个不依赖任何大模型服务的纯检索模式,克隆下来就能跑出结果。
+# Chinese-English Mixed-Document RAG QA System
 
----
-
-## ⚠️ 这个仓库的定位
-
-**这是「语言感知检索」这一方法的开源复现,不是任何原始项目的代码。**
-
-- 原始项目基于**自采数据集**与**边缘设备**环境,那些数据与硬件不在这里,也无法恢复。
-- 本仓库改用**公开模型 + 内置示例语料(8 篇中英文档,35 个块)**重建同一套方法,
-  因此本仓库跑出来的指标**与任何原始项目都不可直接比较**。
-- 本仓库里的所有数字,都是在**本仓库自带语料**上实测得到的,可以用一条命令复现。
-
-写这段是因为:如果一个仓库声称复现了某组指标却复现不出来,那它比没有仓库更糟。
+A retrieval-augmented QA system with PDF / DOCX / TXT / MD parsing, **language-aware
+embeddings**, FAISS dual-index retrieval, and cross-lingual RRF fusion. It ships with a
+pure-retrieval mode that needs no LLM service at all — clone it and you get results.
 
 ---
 
-## 结论先行
+## ⚠️ What This Repo Is (and Isn't)
 
-我最初的假设是「中文走中文模型、英文走英文模型,检索一定优于单个多语言模型」。
-实测下来**只对了一半**,而且错的方式很有意思。
+**This is an open-source reproduction of the "language-aware retrieval" method — not the code of
+any original project.**
 
-语料:8 篇中英文档,35 个块(中文 15 / 英文 20)。评测:20 条问题,
-其中同语种 12 条、跨语言 8 条(中文提问、答案只在英文文档里,或反过来)。
+- The original project ran on a **self-collected dataset** and **edge-device** hardware. That data
+  and that hardware are not here, and cannot be recovered.
+- This repo rebuilds the same method with **public models + a bundled demo corpus (8 Chinese and
+  English documents, 35 chunks)**. The metrics produced here are therefore **not directly
+  comparable to any original project's**.
+- Every number in this repo was measured on the **corpus bundled with this repo**, and can be
+  reproduced with a single command.
 
-| 方案 | 同语种 R@1 | 跨语言 R@1 | 跨语言 R@5 | 合计 R@1 | 合计 R@5 |
+This section exists because: a repo that claims to reproduce a set of metrics and then can't is
+worse than no repo at all.
+
+---
+
+## Conclusion First
+
+My original hypothesis was: "route Chinese to a Chinese model and English to an English model, and
+retrieval will surely beat a single multilingual model." Testing showed it was **only half right** —
+and it was wrong in an interesting way.
+
+Corpus: 8 Chinese/English documents, 35 chunks (15 Chinese / 20 English). Evaluation: 20 questions,
+12 same-language and 8 cross-lingual (asked in Chinese with the answer only in an English document,
+or the reverse).
+
+| Approach | Same-lang R@1 | Cross-lingual R@1 | Cross-lingual R@5 | Overall R@1 | Overall R@5 |
 |---|---|---|---|---|---|
-| 多语言单模型(对照) | 0.833 | **1.000** | **1.000** | **0.900** | 0.950 |
-| 语言路由 | **1.000** | 0.000 | 0.000 | 0.600 | 0.600 |
-| 等权 RRF | 0.500 | 0.375 | **1.000** | 0.450 | **1.000** |
-| 加权 RRF(w=1.5) | **1.000** | 0.000 | 0.000 | 0.600 | 0.600 |
+| Multilingual single model (control) | 0.833 | **1.000** | **1.000** | **0.900** | 0.950 |
+| Language routing | **1.000** | 0.000 | 0.000 | 0.600 | 0.600 |
+| Equal-weight RRF | 0.500 | 0.375 | **1.000** | 0.450 | **1.000** |
+| Weighted RRF (w=1.5) | **1.000** | 0.000 | 0.000 | 0.600 | 0.600 |
 
-### 三个发现
+### Three Findings
 
-**1. 语言路由拿到了唯一的同语种满分,代价是跨语言彻底归零。**
+**1. Language routing was the only approach to score a perfect same-language result — at the cost of
+taking cross-lingual all the way to zero.**
 
-按查询语种路由到单语子索引后,同语种 R@1 达到 1.000 —— 这是四个方案里唯一做到的。
-但跨语言的 8 条问题全部为 0:路由把另一种语言的文档从候选集里**彻底排除**了,
-不是排序不好,是根本不在候选里。
+Routing each query to the monolingual sub-index for its language pushed same-language R@1 to
+1.000 — the only one of the four approaches to manage it. But all 8 cross-lingual questions scored 0:
+routing **completely excludes** documents in the other language from the candidate set. It isn't that
+they rank badly; they aren't in the candidate set at all.
 
-**2. RRF 能救回召回,但救不回精度。**
+**2. RRF rescues recall, but not precision.**
 
-等权 RRF 把跨语言 R@5 从 0 拉回 **1.000**,但同语种 R@1 从 1.000 掉到 0.500。
-原因是 RRF 只看排名、不看分数分布:一个「在本语言排第 1、在另一语言排第 20」的块,
-和一个「一路排第 1、另一路完全没有」的块,拿到的 RRF 分几乎相同。
-两个空间各自返回 20 个候选,而每个空间只有 15–20 个块,等于**每个空间都返回了全部内容**,
-排名位置因此不再是强信号。
+Equal-weight RRF pulled cross-lingual R@5 back from 0 to **1.000**, but same-language R@1 fell from
+1.000 to 0.500. The reason is that RRF looks only at rank, not at the score distribution: a chunk
+ranked "#1 in its own language, #20 in the other" and a chunk ranked "#1 in one stream, entirely
+absent from the other" receive almost the same RRF score. Each space returns 20 candidates while
+each space holds only 15–20 chunks, which means **each space returned all of its content** — so rank
+position stops being a strong signal.
 
-**3. 想用加权修这个问题的尝试失败了 —— 而且失败得很干净。**
+**3. The attempt to fix this with weighting failed — and it failed cleanly.**
 
-| primary_weight | 同语种 R@1 | 跨语言 R@5 | 合计 R@1 | 合计 R@5 |
+| primary_weight | Same-lang R@1 | Cross-lingual R@5 | Overall R@1 | Overall R@5 |
 |---|---|---|---|---|
 | 1.00 | 0.500 | 1.000 | 0.450 | 1.000 |
 | 1.05 | 1.000 | 0.875 | 0.600 | 0.950 |
 | 1.10 | 1.000 | 0.000 | 0.600 | 0.600 |
 | 1.50 | 1.000 | 0.000 | 0.600 | 0.600 |
 
-这是一个**阶跃函数**,不是权衡曲线。权重要么 ≤ 1.0(等于没加,退化成等权 RRF),
-要么一旦略大于 1.0,主语言那一路的 rank-1 就恒压过另一路的 rank-1,
-直接退化成纯路由。中间没有可用地带。
+This is a **step function**, not a trade-off curve. Either the weight is ≤ 1.0 (which is the same as
+not adding one — it degenerates into equal-weight RRF), or, as soon as it is slightly above 1.0, the
+primary-language stream's rank-1 permanently outranks the other stream's rank-1 and it degenerates
+straight into pure routing. There is no usable middle ground.
 
-### 所以结论是什么
+### So What's the Conclusion
 
-**在这个语料上,朴素的多语言单模型反而是最强的单一选择(合计 R@1 0.900)。**
+**On this corpus, the plain multilingual single model is actually the strongest single choice
+(overall R@1 0.900).**
 
-语言感知路由的价值不在这组检索指标上,而在别处:
+The value of language-aware routing isn't in these retrieval metrics — it's elsewhere:
 
-- **索引与延迟**:单语小模型(24M / 33M)比多语言模型(118M)快且省内存;
-- **可替换性**:可以针对每种语言单独换上更强的模型,而不必迁就一个万金油;
-- **纯单语场景**:如果业务里 100% 是中文查询,路由方案在同语种上确实更好。
+- **Index and latency**: the small monolingual models (24M / 33M) are faster and use less memory
+  than the multilingual model (118M);
+- **Swappability**: you can drop in a stronger model per language instead of settling for one
+  jack-of-all-trades;
+- **Purely monolingual settings**: if 100% of your traffic is Chinese queries, routing really is
+  better on same-language retrieval.
 
-换句话说:**语言路由是一个组件,不是一个方案。**用不用它取决于查询的语种分布,
-而这件事必须先量出来再决定 —— 这正是本仓库做的事。
+In other words: **language routing is a component, not a solution.** Whether to use it depends on the
+language distribution of your queries, and that has to be measured before it can be decided — which
+is exactly what this repo does.
 
-### ⚠️ 一个必须说明的方法学问题
+### ⚠️ A Methodological Problem That Has to Be Stated
 
-**上面的对比不是参数量对齐的。** 多语言基线模型 `paraphrase-multilingual-MiniLM-L12-v2`
-有 **117.7M** 参数,而 `bge-small-zh` + `bge-small-en` 加起来只有 **57.4M**。
-基线占了容量的便宜,「多语言模型更强」这个结论有多少来自架构、多少来自参数量,
-本仓库**无法区分**。
+**The comparison above is not parameter-matched.** The multilingual baseline
+`paraphrase-multilingual-MiniLM-L12-v2` has **117.7M** parameters, while `bge-small-zh` +
+`bge-small-en` together have only **57.4M**. The baseline gets a free ride on capacity, and this repo
+**cannot distinguish** how much of "the multilingual model is stronger" comes from architecture and
+how much from parameter count.
 
-要真正下结论,需要用同量级(约 60M)的多语言模型重跑。这是下一步第一件要做的事。
+To really settle it, the run has to be repeated with a multilingual model of comparable size
+(~60M). That is the first thing to do next.
 
 ---
 
-## 快速开始
+## Quick Start
 
 ```bash
 pip install -r requirements.txt
 
-# 1. 生成内置示例语料(8 篇中英文档,覆盖 md/txt/docx/pdf 四种格式)
+# 1. Generate the bundled demo corpus (8 Chinese/English documents, covering md/txt/docx/pdf)
 python scripts/build_demo_corpus.py
 
-# 2. 提问 —— 默认纯检索模式,不需要任何大模型服务
+# 2. Ask a question — pure-retrieval mode by default, no LLM service required
 python scripts/ask.py "本科生一次最多能借几本书?"
 
-# 3. 需要生成答案时,接本地 Ollama(免费,不需要 API key)
+# 3. To generate answers, hook up a local Ollama (free, no API key needed)
 ollama pull qwen2.5:7b
 python scripts/ask.py "食堂能用现金付款吗?" --llm ollama
 
-# 4. 复现上面所有评测数字
+# 4. Reproduce every evaluation number above
 python eval/evaluate.py
-python eval/evaluate.py --modes routed,cross_lingual   # 跳过 470MB 的多语言基线
+python eval/evaluate.py --modes routed,cross_lingual   # skip the 470MB multilingual baseline
 
-# 5. 网页演示
+# 5. Web demo
 pip install streamlit && streamlit run app.py
 
-# 6. 测试(40 个用例,无需下载模型)
+# 6. Tests (40 cases, no model downloads needed)
 python -m pytest tests -q
 ```
 
-首次运行会从 HuggingFace 下载嵌入模型:`bge-small-zh-v1.5` 约 95MB、
-`bge-small-en-v1.5` 约 130MB、多语言基线约 470MB。模型按需加载,不用到就不会下。
+The first run downloads the embedding models from HuggingFace: `bge-small-zh-v1.5` at about 95MB,
+`bge-small-en-v1.5` at about 130MB, and the multilingual baseline at about 470MB. Models load on
+demand — if a path isn't used, it isn't downloaded.
 
-### 一个直观的失败案例
+### One Illustrative Failure Case
 
 ```console
 $ python scripts/ask.py "图书馆周末几点开门?" --mode hybrid
@@ -125,122 +147,135 @@ $ python scripts/ask.py "图书馆周末几点开门?" --mode hybrid
 置信度    0.547
 
 检索结果 top-5  (分数列 = rrf)
-  [1]   0.0246  图书馆借阅规则.md  (zh)   ← 抢走了
+  [1]   0.0246  图书馆借阅规则.md  (zh)   ← it snatched the slot
   [2]   0.0242  宿舍管理条例.txt  (zh)
   [3]   0.0238  图书馆借阅规则.md  (zh)
   ...
 ```
 
-正确答案在英文的 `library_policy.md` 里("On weekends the library opens at 10:00
-and closes at 18:00"),但因为查询是中文,加权 RRF 让中文的《图书馆借阅规则》
-全面压过了英文文档。这就是上面那张表里「加权 RRF 跨语言 R@5 = 0」的具体样子。
+The correct answer is in the English `library_policy.md` ("On weekends the library opens at 10:00
+and closes at 18:00"), but because the query is in Chinese, weighted RRF lets the Chinese
+图书馆借阅规则 (library borrowing rules) document override the English one across the board. That is
+what "weighted RRF cross-lingual R@5 = 0" in the table above looks like in practice.
 
 ---
 
-## 目录结构
+## Directory Structure
 
 ```
 multilingual-rag-qa/
-├── _bootstrap.py            # 入口脚本共用:注入 src 路径 + 切换 UTF-8 输出
-├── app.py                   # Streamlit 演示界面
+├── _bootstrap.py            # shared by entry scripts: inject src path + switch to UTF-8 output
+├── app.py                   # Streamlit demo UI
 ├── requirements.txt
 ├── src/rag/
-│   ├── config.py            # 所有超参数集中在此,便于复现
-│   ├── language.py          # 语言检测(CJK 字符占比)
-│   ├── loaders.py           # PDF / DOCX / TXT / MD → 段落块
-│   ├── chunking.py          # 按语种分配字数预算的分块
-│   ├── embedders.py         # 语言感知嵌入 + 多语言基线
-│   ├── index.py             # FAISS 双索引 + RRF 融合
-│   ├── prompts.py           # 动态 Prompt Engineering
-│   ├── llm.py               # NullLLM(纯检索) / OllamaLLM
-│   └── pipeline.py          # 端到端流程
+│   ├── config.py            # every hyperparameter lives here, for reproducibility
+│   ├── language.py          # language detection (CJK character ratio)
+│   ├── loaders.py           # PDF / DOCX / TXT / MD → paragraph chunks
+│   ├── chunking.py          # chunking with a per-language character budget
+│   ├── embedders.py         # language-aware embeddings + multilingual baseline
+│   ├── index.py             # FAISS dual index + RRF fusion
+│   ├── prompts.py           # dynamic prompt engineering
+│   ├── llm.py               # NullLLM (pure retrieval) / OllamaLLM
+│   └── pipeline.py          # end-to-end flow
 ├── scripts/
-│   ├── build_demo_corpus.py # 生成示例语料(含手写最小 PDF 生成器)
-│   ├── ingest.py            # 建索引并落盘
-│   └── ask.py               # 命令行提问
+│   ├── build_demo_corpus.py # generate the demo corpus (includes a hand-rolled minimal PDF writer)
+│   ├── ingest.py            # build the index and save it to disk
+│   └── ask.py               # ask questions from the command line
 ├── eval/
-│   ├── qa_set.jsonl         # 20 条标注问题
-│   └── evaluate.py          # recall@k / MRR,按同语种与跨语言分档
-├── tests/                   # 40 个用例,全部不需要下载模型
-└── data/raw/                # 8 篇示例文档
+│   ├── qa_set.jsonl         # 20 labeled questions
+│   └── evaluate.py          # recall@k / MRR, broken down by same-language and cross-lingual
+├── tests/                   # 40 cases, none of which need model downloads
+└── data/raw/                # the 8 demo documents
 ```
 
 ---
 
-## 三个设计要点
+## Three Design Points
 
-### 1. 语言感知的分块,不只是语言感知的嵌入
+### 1. Language-aware chunking, not just language-aware embeddings
 
-中文字符的信息密度约为英文的两倍。用同一个字数上限会让中文块承载过多内容、
-英文块过于零碎,两边的检索粒度就不可比了。所以字数预算按语种分开:
-**中文 200 字 / 英文 420 字**,换算成 token 量级后两者才大致相当。
-`ChunkConfig.budget()` 是这个逻辑的唯一入口。
+A Chinese character carries roughly twice the information density of an English character. Using the
+same character cap for both would make Chinese chunks carry too much content and English chunks too
+fragmented, and the retrieval granularity on the two sides would no longer be comparable. So the
+character budget is split by language: **200 Chinese characters / 420 English characters** — only
+then do the two land in roughly the same token range. `ChunkConfig.budget()` is the single entry
+point for this logic.
 
-### 2. 为什么用 RRF 而不是直接比分数
+### 2. Why RRF instead of comparing scores directly
 
-中文模型和英文模型给出的余弦分数**量纲不同**,直接比大小是错的。
-RRF 只依赖排名、不依赖分数,天然绕开这个问题 —— 这就是它存在的理由。
+The Chinese model and the English model produce cosine scores on **different scales**, so comparing
+them directly is simply wrong. RRF depends only on rank and not on score, which sidesteps the problem
+by construction — that's the reason it exists.
 
-但上面「发现 2」也说明了它的代价:丢掉分数分布的代价,是无法区分
-「一路第 1、另一路第 20」和「一路第 1、另一路没有」。**这是 RRF 的固有性质,不是实现缺陷。**
+But "Finding 2" above also shows what that costs: the price of throwing away the score distribution
+is that you can no longer tell "rank 1 in one stream, rank 20 in the other" apart from "rank 1 in one
+stream, absent from the other." **This is inherent to RRF, not an implementation defect.**
 
-### 3. 动态 Prompt Engineering —— 三个可判定的信号
+### 3. Dynamic prompt engineering — three decidable signals
 
-「动态」不是形容词,而是三个会实质改变送进模型的文本的信号:
+"Dynamic" is not an adjective here; it means three signals that materially change the text sent to
+the model:
 
-| 信号 | 影响 |
+| Signal | Effect |
 |---|---|
-| 查询意图(事实 / 摘要 / 对比) | 换用完全不同的作答结构与示例 |
-| 检索置信度低于阈值 | 追加**显式允许回答「无法确定」**的指令 |
-| 命中结果跨语种 | 要求用提问的语言作答,并标注引用来源的语言 |
+| Query intent (factual / summary / comparison) | Switches to a completely different answer structure and set of examples |
+| Retrieval confidence below threshold | Appends an instruction that **explicitly permits answering "cannot determine"** |
+| Hits spanning multiple languages | Requires answering in the language of the question and labeling the language of each cited source |
 
-第二条是抑制幻觉最有效的一条:不在指令里显式给出「允许说不知道」的出口,
-模型几乎一定会硬编一个答案。
+The second one is the most effective hallucination suppressor of the three: without an explicit
+escape hatch in the instructions that allows saying "I don't know," the model will almost always
+fabricate an answer.
 
 ---
 
-## 复现评测
+## Reproducing the Evaluation
 
 ```bash
 python eval/evaluate.py --show-misses --json eval/result.json
 ```
 
-- `--show-misses` 逐条打印漏检案例
-- `--primary-weight` 调节加权 RRF 的主语言权重
-- `--modes` 选择要对比的方案
+- `--show-misses` prints every missed case one by one
+- `--primary-weight` adjusts the primary-language weight for weighted RRF
+- `--modes` selects which approaches to compare
 
-**评测只测检索,不调用大模型** —— 否则生成的随机性会污染指标。
-整套流程无随机采样,同样的输入必然得到同样的数字。
-
----
-
-## 已知局限
-
-1. **参数量未对齐**(最重要,见上文)。117.7M 的多语言基线 vs 57.4M 的双单语模型。
-2. **语料太小**。8 篇文档、35 个块、20 条问题。指标只应看趋势,不应看小数位。
-   每个空间只有 15–20 个块,而候选集取了 20 —— 等于每个空间都返回全部内容,
-   这会让 RRF 的排名信号变弱(见「发现 2」)。
-3. **语言检测是启发式的**。纯数字/纯符号文本会被判成英文;真正的三语以上场景需要换方案。
-4. **跨语言检索只做了「同一个问题两种语言都查一遍」**,没有用多语言对齐空间
-   (如 LaBSE / bge-m3),也没有做查询翻译。
-5. **没有 rerank 阶段**。加入 cross-encoder 重排很可能会同时改善两侧指标 —— 
-   这也是当前 0.500 同语种 R@1 的一个潜在补救。
-6. **`it_policy.pdf` 是手工构造的纯 ASCII PDF**,因为中文 PDF 需要嵌入 CID 字体。
+**The evaluation measures retrieval only and never calls an LLM** — otherwise generation randomness
+would contaminate the metrics. The whole pipeline does no random sampling: the same input
+necessarily produces the same numbers.
 
 ---
 
-## 下一步
+## Known Limitations
 
-按优先级:
-
-1. **参数量对齐重跑** —— 排除掉「基线赢在参数量」这个解释,否则上面的结论不成立。
-2. **分数归一化融合** —— 在每个空间内先做 z-score 归一化再融合,
-   理论上能同时保住同语种精度与跨语言召回,是 RRF 的直接替代方案。
-3. **加入 cross-encoder rerank** —— 对融合后的候选做精排,直接冲 R@1。
-4. **扩大评测集** —— 20 条问题的置信区间太宽。
+1. **Parameter counts are not matched** (most important, see above). A 117.7M multilingual baseline
+   vs 57.4M for the two monolingual models combined.
+2. **The corpus is too small.** 8 documents, 35 chunks, 20 questions. Read the metrics for trends,
+   not for decimal places. Each space holds only 15–20 chunks while the candidate set is 20 — i.e.
+   every space returns all of its content, which weakens RRF's rank signal (see "Finding 2").
+3. **Language detection is heuristic.** Purely numeric or purely symbolic text gets classified as
+   English; genuine scenarios with three or more languages need a different approach.
+4. **Cross-lingual retrieval only does "run the same question through both languages."** It does not
+   use a multilingual aligned space (such as LaBSE / bge-m3), and it does not do query translation.
+5. **There is no rerank stage.** Adding cross-encoder reranking would very likely improve the
+   metrics on both sides — and it's a potential remedy for the current 0.500 same-language R@1.
+6. **`it_policy.pdf` is a hand-constructed pure-ASCII PDF**, because a Chinese PDF would require
+   embedding CID fonts.
 
 ---
 
-## 许可
+## Next Steps
+
+In priority order:
+
+1. **Re-run with parameter counts matched** — rule out the "baseline wins on parameter count"
+   explanation, without which the conclusions above don't hold.
+2. **Score-normalized fusion** — z-score normalize within each space first, then fuse. In theory
+   this preserves both same-language precision and cross-lingual recall, and it is a direct
+   replacement for RRF.
+3. **Add cross-encoder rerank** — rerank the fused candidates and go straight at R@1.
+4. **Enlarge the evaluation set** — 20 questions is far too wide a confidence interval.
+
+---
+
+## License
 
 MIT
